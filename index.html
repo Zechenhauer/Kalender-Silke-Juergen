@@ -75,25 +75,42 @@
         flex-grow: 1;
         max-height: 90px;
     }
-    .events-container::-webkit-scrollbar {
-        width: 3px;
-    }
-    .events-container::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 3px;
-    }
+    .events-container::-webkit-scrollbar { width: 3px; }
+    .events-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
     
     .event-badge {
         font-size: 10px; padding: 3px 5px; border-radius: 4px; margin-bottom: 3px; 
         overflow: hidden; text-overflow: ellipsis; display: block; font-weight: bold;
-        line-height: 1.2;
+        line-height: 1.2; white-space: nowrap;
     }
     .event-badge.jürgen { background-color: #eff6ff; color: #1d4ed8; border-left: 3px solid #3b82f6; }
     .event-badge.silke { background-color: #fdf2f8; color: #be185d; border-left: 3px solid #ec4899; }
     .event-badge.birthday { background-color: #faf5ff; color: #7e22ce; border-left: 3px solid #a855f7; }
 
+    /* Filter & Suche Bereich */
+    .filter-bar {
+        display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-btn {
+        background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
+        padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;
+    }
+    .filter-btn.active {
+        background: #d97706; color: white; border-color: #d97706;
+    }
+    .search-input {
+        flex-grow: 1; padding: 6px 12px; font-size: 13px; border: 1px solid #cbd5e1;
+        border-radius: 6px; outline: none; background: #f8fafc;
+    }
+    .search-input:focus { border-color: #d97706; background: #fff; }
+
+    .week-section-title {
+        font-size: 13px; font-weight: bold; color: #d97706; background: #fef3c7;
+        padding: 6px 10px; border-radius: 6px; margin: 15px 0 8px 0;
+    }
+
     .table-container { width: 100%; overflow-x: auto; }
-    .event-table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; font-size: 13px; }
+    .event-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
     .event-table th { background-color: #f1f5f9; color: #475569; padding: 10px; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; }
     .event-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
     .event-table tr:hover { background-color: #f8fafc; }
@@ -167,7 +184,7 @@
             <button class="btn" onclick="addEvent()">Termin online speichern</button>
         </div>
 
-        <!-- Kalender-Ansicht -->
+        <!-- Kalender-Ansicht (Monat) -->
         <div class="card">
             <div class="status-bar">
                 <span id="syncStatus">🔄 Verbinde mit JSONBin...</span>
@@ -181,24 +198,20 @@
             <div class="calendar-grid" id="calendarGrid" style="margin-top: 15px;"></div>
         </div>
 
-        <!-- Termin-Übersicht unten -->
+        <!-- Termin-Übersicht unten (Wöchentlich gruppiert mit Filter & Suche) -->
         <div class="card">
-            <h2>Termin-Übersicht (Aktueller Monat)</h2>
-            <div class="table-container">
-                <table class="event-table">
-                    <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Uhrzeit</th>
-                            <th>Kategorie</th>
-                            <th>Termin / Name</th>
-                            <th style="text-align: right;">Aktion</th>
-                        </tr>
-                    </thead>
-                    <tbody id="eventTableBody">
-                        <!-- Wird dynamisch gefüllt -->
-                    </tbody>
-                </table>
+            <h2>Termin-Übersicht (Wöchentlich sortiert)</h2>
+            
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="setFilter('all', this)">Alle</button>
+                <button class="filter-btn" onclick="setFilter('Jürgen', this)">Jürgen</button>
+                <button class="filter-btn" onclick="setFilter('Silke', this)">Silke</button>
+                <button class="filter-btn" onclick="setFilter('Geburtstag', this)">🎁 Geburtstage</button>
+                <input type="text" id="searchInput" class="search-input" placeholder="Nach Begriff suchen..." oninput="renderEventTable()">
+            </div>
+
+            <div id="weeklyTablesContainer">
+                <!-- Wird dynamisch nach Wochen unterteilt gefüllt -->
             </div>
         </div>
     </div>
@@ -209,6 +222,7 @@
 
     let currentDate = new Date();
     let events = [];
+    let currentFilter = 'all';
 
     const monthsNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 
@@ -316,6 +330,25 @@
         return false;
     }
 
+    // Hilfsfunktion zur Ermittlung der Kalenderwoche
+    function getCalendarWeek(dateObj) {
+        let d = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+        let dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        let yearStart = new Date(Date.UTC(d.getUTCFolder && d.getUTCFolder() || d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    function getWeekNumber(dateStr) {
+        let dateObj = new Date(dateStr);
+        let d = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+        let dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        let yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        let weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return { week: weekNo, year: d.getUTCFullYear() };
+    }
+
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         grid.innerHTML = '';
@@ -370,15 +403,26 @@
             `;
         }
 
-        renderEventTable(year, month);
+        renderEventTable();
     }
 
-    function renderEventTable(year, month) {
-        const tbody = document.getElementById('eventTableBody');
-        tbody.innerHTML = '';
+    function setFilter(filterType, btnElement) {
+        currentFilter = filterType;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btnElement.classList.add('active');
+        renderEventTable();
+    }
 
+    function renderEventTable() {
+        const container = document.getElementById('weeklyTablesContainer');
+        container.innerHTML = '';
+
+        let year = currentDate.getFullYear();
+        let month = currentDate.getMonth();
         let daysInMonth = new Date(year, month + 1, 0).getDate();
         let monthEventsList = [];
+
+        let searchQuery = document.getElementById('searchInput').value.toLowerCase();
 
         for (let day = 1; day <= daysInMonth; day++) {
             let dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -391,34 +435,75 @@
 
         monthEventsList.sort((a, b) => a.activeDate.localeCompare(b.activeDate) || (a.timeStart || "").localeCompare(b.timeStart || ""));
 
-        if (monthEventsList.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">Keine Termine in diesem Monat.</td></tr>`;
+        // Filter anwenden
+        let filteredEvents = monthEventsList.filter(ev => {
+            let authorName = ev.author || 'Jürgen';
+            
+            if (currentFilter !== 'all' && authorName !== currentFilter) return false;
+            if (searchQuery && !ev.title.toLowerCase().includes(searchQuery) && !authorName.toLowerCase().includes(searchQuery)) return false;
+
+            return true;
+        });
+
+        if (filteredEvents.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: #64748b; padding: 20px;">Keine passenden Termine gefunden.</div>`;
             return;
         }
 
-        monthEventsList.forEach(ev => {
-            let formattedDate = ev.activeDate.split('-').reverse().join('.');
-            let authorName = ev.author || 'Jürgen';
-            let authorClass = authorName.toLowerCase();
-            
-            let timeStr = '–';
-            if (authorClass !== 'geburtstag') {
-                timeStr = ev.timeStart ? `${ev.timeStart} Uhr` : '–';
-                if (ev.timeEnd) timeStr = `${ev.timeStart} – ${ev.timeEnd} Uhr`;
-            }
-
-            let titleDisplay = authorClass === 'geburtstag' ? `🎁 ${ev.title} (Geburtstag)` : ev.title;
-
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${formattedDate}</strong></td>
-                    <td>${timeStr}</td>
-                    <td><span class="badge-tag ${authorClass}">${authorName}</span></td>
-                    <td>${titleDisplay}</td>
-                    <td style="text-align: right;"><button class="del-btn" onclick="deleteEvent(${ev.id})" title="Löschen">✕</button></td>
-                </tr>
-            `;
+        // Nach Kalenderwochen gruppieren
+        let weeksMap = {};
+        filteredEvents.forEach(ev => {
+            let wn = getWeekNumber(ev.activeDate);
+            let weekKey = `KW ${wn.week} (${wn.year})`;
+            if (!weeksMap[weekKey]) weeksMap[weekKey] = [];
+            weeksMap[weekKey].push(ev);
         });
+
+        // HTML für jede Woche generieren
+        for (let weekKey in weeksMap) {
+            let weekHtml = `
+                <div class="week-section-title">📅 ${weekKey}</div>
+                <div class="table-container" style="margin-bottom: 15px;">
+                    <table class="event-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Uhrzeit</th>
+                                <th>Kategorie</th>
+                                <th>Termin / Name</th>
+                                <th style="text-align: right;">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            weeksMap[weekKey].forEach(ev => {
+                let formattedDate = ev.activeDate.split('-').reverse().join('.');
+                let authorName = ev.author || 'Jürgen';
+                let authorClass = authorName.toLowerCase();
+                
+                let timeStr = '–';
+                if (authorClass !== 'geburtstag') {
+                    timeStr = ev.timeStart ? `${ev.timeStart} Uhr` : '–';
+                    if (ev.timeEnd) timeStr = `${ev.timeStart} – ${ev.timeEnd} Uhr`;
+                }
+
+                let titleDisplay = authorClass === 'geburtstag' ? `🎁 ${ev.title} (Geburtstag)` : ev.title;
+
+                weekHtml += `
+                    <tr>
+                        <td><strong>${formattedDate}</strong></td>
+                        <td>${timeStr}</td>
+                        <td><span class="badge-tag ${authorClass}">${authorName}</span></td>
+                        <td>${titleDisplay}</td>
+                        <td style="text-align: right;"><button class="del-btn" onclick="deleteEvent(${ev.id})" title="Löschen">✕</button></td>
+                    </tr>
+                `;
+            });
+
+            weekHtml += `</tbody></table></div>`;
+            container.innerHTML += weekHtml;
+        }
     }
 
     function changeMonth(direction) {
