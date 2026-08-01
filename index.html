@@ -27,7 +27,7 @@
     }
     .card h2 { color: #d97706; font-size: 16px; margin-top: 0; text-transform: uppercase; font-weight: 900; }
 
-    .form-row { display: grid; grid-template-columns: 1fr 1.5fr 1fr 100px 100px; gap: 10px; margin-bottom: 12px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1.5fr 1fr 120px 120px; gap: 10px; margin-bottom: 12px; }
     @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
 
     .form-group label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
@@ -124,11 +124,16 @@
                 </div>
                 <div class="form-group">
                     <label>Von</label>
-                    <input type="time" id="eventTimeStart" class="form-control" value="10:00">
+                    <select id="eventTimeStart" class="form-control">
+                        <!-- Wird per Skript gefüllt -->
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Bis (opt.)</label>
-                    <input type="time" id="eventTimeEnd" class="form-control">
+                    <select id="eventTimeEnd" class="form-control">
+                        <option value="">-- Kein Ende --</option>
+                        <!-- Wird per Skript gefüllt -->
+                    </select>
                 </div>
             </div>
             <button class="btn" onclick="addEvent()">Termin online speichern</button>
@@ -178,6 +183,27 @@
     let events = [];
 
     const monthsNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+
+    // Uhrzeit-Dropdowns generieren (30-Minuten-Schritte)
+    function populateTimeSelects() {
+        const startSelect = document.getElementById('eventTimeStart');
+        const endSelect = document.getElementById('eventTimeEnd');
+        
+        let optionsHtml = '';
+        for (let h = 6; h <= 23; h++) {
+            for (let m = 0; m < 60; m += 30) {
+                let hourStr = String(h).padStart(2, '0');
+                let minStr = String(m).padStart(2, '0');
+                let timeVal = `${hourStr}:${minStr}`;
+                optionsHtml += `<option value="${timeVal}">${timeVal} Uhr</option>`;
+            }
+        }
+        
+        startSelect.innerHTML = optionsHtml;
+        startSelect.value = "10:00"; // Standardwert Start
+
+        endSelect.innerHTML = `<option value="">-- Kein Ende --</option>` + optionsHtml;
+    }
 
     async function loadFromCloud() {
         const statusEl = document.getElementById('syncStatus');
@@ -337,7 +363,7 @@
 
         document.getElementById('eventTitle').value = '';
         document.getElementById('eventDate').value = '';
-        document.getElementById('eventTimeEnd').value = '';
+        document.getElementById('eventTimeEnd').value = "";
     }
 
     function deleteEvent(id) {
@@ -347,6 +373,8 @@
         }
     }
 
+    // Initialisierung beim Laden
+    populateTimeSelects();
     loadFromCloud();
     </script>
 </body>
