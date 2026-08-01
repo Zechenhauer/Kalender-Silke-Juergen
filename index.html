@@ -27,7 +27,7 @@
     }
     .card h2 { color: #d97706; font-size: 16px; margin-top: 0; text-transform: uppercase; font-weight: 900; }
 
-    .form-row { display: grid; grid-template-columns: 1fr 1.5fr 1fr 120px 120px; gap: 10px; margin-bottom: 12px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1.5fr 1fr 100px 100px 130px; gap: 10px; margin-bottom: 12px; }
     @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
 
     .form-group label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
@@ -70,11 +70,12 @@
     .calendar-cell.today .day-number { color: #d97706; }
     
     .event-badge {
-        font-size: 12px; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; 
+        font-size: 10px; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; 
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-weight: bold;
     }
     .event-badge.jürgen { background-color: #eff6ff; color: #1d4ed8; border-left: 3px solid #3b82f6; }
     .event-badge.silke { background-color: #fdf2f8; color: #be185d; border-left: 3px solid #ec4899; }
+    .event-badge.birthday { background-color: #faf5ff; color: #7e22ce; border-left: 3px solid #a855f7; }
 
     .table-container { width: 100%; overflow-x: auto; }
     .event-table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; font-size: 13px; }
@@ -87,6 +88,7 @@
     }
     .badge-tag.jürgen { background: #dbeafe; color: #1e40af; }
     .badge-tag.silke { background: #fce7f3; color: #9d174d; }
+    .badge-tag.birthday { background: #f3e8ff; color: #6b21a8; }
 
     .del-btn {
         background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; font-weight: bold;
@@ -108,31 +110,37 @@
             <h2>Neuen Termin eintragen</h2>
             <div class="form-row" style="margin-top: 12px;">
                 <div class="form-group">
-                    <label>Wer?</label>
-                    <select id="eventAuthor" class="form-control">
+                    <label>Wer / Art</label>
+                    <select id="eventAuthor" class="form-control" onchange="checkBirthdaySelection()">
                         <option value="Jürgen">Jürgen</option>
                         <option value="Silke">Silke</option>
+                        <option value="Geburtstag">🎁 Geburtstag</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Beschreibung</label>
-                    <input type="text" id="eventTitle" class="form-control" placeholder="z. B. Arzttermin...">
+                    <label>Beschreibung / Name</label>
+                    <input type="text" id="eventTitle" class="form-control" placeholder="z. B. Reha oder Name...">
                 </div>
                 <div class="form-group">
-                    <label>Datum</label>
+                    <label>Datum (Start)</label>
                     <input type="date" id="eventDate" class="form-control">
                 </div>
                 <div class="form-group">
                     <label>Von</label>
-                    <select id="eventTimeStart" class="form-control">
-                        <!-- Wird per Skript gefüllt -->
-                    </select>
+                    <select id="eventTimeStart" class="form-control"></select>
                 </div>
                 <div class="form-group">
                     <label>Bis (opt.)</label>
                     <select id="eventTimeEnd" class="form-control">
                         <option value="">-- Kein Ende --</option>
-                        <!-- Wird per Skript gefüllt -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Wiederholung</label>
+                    <select id="eventRepeat" class="form-control">
+                        <option value="none">Einmalig</option>
+                        <option value="weekly_workdays">Wöchentlich (Mo–Fr)</option>
+                        <option value="yearly">Jährlich</option>
                     </select>
                 </div>
             </div>
@@ -162,8 +170,8 @@
                         <tr>
                             <th>Datum</th>
                             <th>Uhrzeit</th>
-                            <th>Wer</th>
-                            <th>Termin</th>
+                            <th>Kategorie</th>
+                            <th>Termin / Name</th>
                             <th style="text-align: right;">Aktion</th>
                         </tr>
                     </thead>
@@ -184,7 +192,6 @@
 
     const monthsNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 
-    // Uhrzeit-Dropdowns generieren (30-Minuten-Schritte)
     function populateTimeSelects() {
         const startSelect = document.getElementById('eventTimeStart');
         const endSelect = document.getElementById('eventTimeEnd');
@@ -200,9 +207,16 @@
         }
         
         startSelect.innerHTML = optionsHtml;
-        startSelect.value = "10:00"; // Standardwert Start
-
+        startSelect.value = "10:00";
         endSelect.innerHTML = `<option value="">-- Kein Ende --</option>` + optionsHtml;
+    }
+
+    function checkBirthdaySelection() {
+        const author = document.getElementById('eventAuthor').value;
+        const repeatSelect = document.getElementById('eventRepeat');
+        if (author === 'Geburtstag') {
+            repeatSelect.value = 'yearly';
+        }
     }
 
     async function loadFromCloud() {
@@ -255,6 +269,25 @@
         }
     }
 
+    function eventOccursOnDate(ev, targetDateStr) {
+        if (ev.date === targetDateStr) return true;
+
+        let targetDate = new Date(targetDateStr);
+        let origDate = new Date(ev.date);
+
+        if (ev.repeat === 'yearly') {
+            return targetDate.getDate() === origDate.getDate() && targetDate.getMonth() === origDate.getMonth();
+        }
+
+        if (ev.repeat === 'weekly_workdays') {
+            let dayOfWeek = targetDate.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) return false; 
+            return targetDate >= origDate;
+        }
+
+        return false;
+    }
+
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         grid.innerHTML = '';
@@ -283,15 +316,22 @@
             let isToday = (dayString === todayStr);
 
             let dayEventsHtml = '';
-            let dayEvents = events.filter(e => e.date === dayString).sort((a, b) => (a.timeStart || "").localeCompare(b.timeStart || ""));
+            let dayEvents = events.filter(e => eventOccursOnDate(e, dayString));
+            dayEvents.sort((a, b) => (a.timeStart || "").localeCompare(b.timeStart || ""));
 
             dayEvents.forEach(ev => {
-                let cssClass = 'event-badge ' + (ev.author ? ev.author.toLowerCase() : 'jürgen');
-                let timeText = ev.timeStart ? ev.timeStart : '';
-                if (ev.timeEnd) timeText += ` - ${ev.timeEnd}`;
-                if (timeText) timeText += ' Uhr';
+                let authorKey = ev.author ? ev.author.toLowerCase() : 'jürgen';
+                let cssClass = 'event-badge ' + (authorKey === 'geburtstag' ? 'birthday' : authorKey);
                 
-                dayEventsHtml += `<span class="${cssClass}" title="${ev.author} (${timeText}): ${ev.title}">${timeText ? timeText + ' | ' : ''}${ev.title}</span>`;
+                let timeText = '';
+                if (authorKey !== 'geburtstag') {
+                    timeText = ev.timeStart ? ev.timeStart : '';
+                    if (ev.timeEnd) timeText += ` - ${ev.timeEnd}`;
+                    if (timeText) timeText += ' Uhr';
+                }
+
+                let displayText = authorKey === 'geburtstag' ? `🎁 ${ev.title}` : ev.title;
+                dayEventsHtml += `<span class="${cssClass}" title="${displayText}">${timeText ? timeText + ' | ' : ''}${displayText}</span>`;
             });
 
             grid.innerHTML += `
@@ -310,29 +350,48 @@
         tbody.innerHTML = '';
 
         let monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
-        let monthEvents = events.filter(e => e.date && e.date.startsWith(monthPrefix));
+        let daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        monthEvents.sort((a, b) => a.date.localeCompare(b.date) || (a.timeStart || "").localeCompare(b.timeStart || ""));
+        let monthEventsList = [];
 
-        if (monthEvents.length === 0) {
+        for (let day = 1; day <= daysInMonth; day++) {
+            let dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            let matchingEvents = events.filter(e => eventOccursOnDate(e, dayString));
+            
+            matchingEvents.forEach(ev => {
+                monthEventsList.push({ ...ev, activeDate: dayString });
+            });
+        }
+
+        monthEventsList.sort((a, b) => a.activeDate.localeCompare(b.activeDate) || (a.timeStart || "").localeCompare(b.timeStart || ""));
+
+        if (monthEventsList.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">Keine Termine in diesem Monat.</td></tr>`;
             return;
         }
 
-        monthEvents.forEach(ev => {
-            let formattedDate = ev.date.split('-').reverse().join('.');
+        monthEventsList.forEach(ev => {
+            let formattedDate = ev.activeDate.split('-').reverse().join('.');
             let authorName = ev.author || 'Jürgen';
             let authorClass = authorName.toLowerCase();
             
-            let timeStr = ev.timeStart ? `${ev.timeStart} Uhr` : '–';
-            if (ev.timeEnd) timeStr = `${ev.timeStart} – ${ev.timeEnd} Uhr`;
+            let timeStr = '–';
+            if (authorClass !== 'geburtstag') {
+                timeStr = ev.timeStart ? `${ev.timeStart} Uhr` : '–';
+                if (ev.timeEnd) timeStr = `${ev.timeStart} – ${ev.timeEnd} Uhr`;
+            }
+
+            let titleDisplay = authorClass === 'geburtstag' ? `🎁 ${ev.title} (Geburtstag)` : ev.title;
+            if (ev.repeat === 'weekly_workdays' && authorClass !== 'geburtstag') {
+                titleDisplay += ' <span style="font-size:10px; color:#64748b;">(Reha Mo–Fr)</span>';
+            }
 
             tbody.innerHTML += `
                 <tr>
                     <td><strong>${formattedDate}</strong></td>
                     <td>${timeStr}</td>
                     <td><span class="badge-tag ${authorClass}">${authorName}</span></td>
-                    <td>${ev.title}</td>
+                    <td>${titleDisplay}</td>
                     <td style="text-align: right;"><button class="del-btn" onclick="deleteEvent(${ev.id})" title="Löschen">✕</button></td>
                 </tr>
             `;
@@ -350,30 +409,31 @@
         const date = document.getElementById('eventDate').value;
         const timeStart = document.getElementById('eventTimeStart').value;
         const timeEnd = document.getElementById('eventTimeEnd').value;
+        const repeat = document.getElementById('eventRepeat').value;
 
         if (!title || !date) {
-            alert('Bitte Terminbeschreibung und Datum angeben!');
+            alert('Bitte Terminbeschreibung/Namen und Startdatum angeben!');
             return;
         }
 
         const newId = events.length > 0 ? Math.max(...events.map(e => e.id || 0)) + 1 : 1;
 
-        events.push({ id: newId, date, timeStart, timeEnd, title, author });
+        events.push({ id: newId, date, timeStart, timeEnd, title, author, repeat });
         saveToCloud();
 
         document.getElementById('eventTitle').value = '';
         document.getElementById('eventDate').value = '';
         document.getElementById('eventTimeEnd').value = "";
+        document.getElementById('eventRepeat').value = "none";
     }
 
     function deleteEvent(id) {
-        if (confirm('Möchtest du diesen Termin wirklich löschen?')) {
+        if (confirm('Möchtest du diesen Termin (inkl. aller Wiederholungen) wirklich löschen?')) {
             events = events.filter(e => e.id !== id);
             saveToCloud();
         }
     }
 
-    // Initialisierung beim Laden
     populateTimeSelects();
     loadFromCloud();
     </script>
