@@ -61,17 +61,32 @@
     }
     .calendar-cell {
         background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;
-        min-height: 100px; padding: 6px; text-align: left; position: relative;
+        min-height: 120px; padding: 6px; text-align: left; position: relative;
+        display: flex; flex-direction: column;
         transition: border-color 0.2s;
     }
     .calendar-cell:hover { border-color: #cbd5e1; }
     .calendar-cell.today { border-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.2); background-color: #fffbeb; }
-    .day-number { font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
+    .day-number { font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; flex-shrink: 0; }
     .calendar-cell.today .day-number { color: #d97706; }
+
+    .events-container {
+        overflow-y: auto;
+        flex-grow: 1;
+        max-height: 90px;
+    }
+    .events-container::-webkit-scrollbar {
+        width: 3px;
+    }
+    .events-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
     
     .event-badge {
-        font-size: 10px; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; 
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-weight: bold;
+        font-size: 10px; padding: 3px 5px; border-radius: 4px; margin-bottom: 3px; 
+        overflow: hidden; text-overflow: ellipsis; display: block; font-weight: bold;
+        line-height: 1.2;
     }
     .event-badge.jürgen { background-color: #eff6ff; color: #1d4ed8; border-left: 3px solid #3b82f6; }
     .event-badge.silke { background-color: #fdf2f8; color: #be185d; border-left: 3px solid #ec4899; }
@@ -279,7 +294,6 @@
         let origDate = new Date(ev.date);
         let endDate = ev.endDate ? new Date(ev.endDate) : null;
 
-        // Prüfen, ob das Zieldatum im gültigen Bereich liegt (falls Enddatum gesetzt)
         if (targetDate < origDate) return false;
         if (endDate && targetDate > endDate) return false;
 
@@ -291,12 +305,11 @@
 
         if (ev.repeat === 'weekly_workdays') {
             let dayOfWeek = targetDate.getDay();
-            if (dayOfWeek === 0 || dayOfWeek === 6) return false; // Wochenende ausschließen
+            if (dayOfWeek === 0 || dayOfWeek === 6) return false; 
             return targetDate >= origDate;
         }
 
         if (ev.repeat === 'weekly_single') {
-            // Wiederholt sich exakt an demselben Wochentag (z.B. jeden Donnerstag)
             return targetDate.getDay() === origDate.getDay() && targetDate >= origDate;
         }
 
@@ -341,18 +354,18 @@
                 let timeText = '';
                 if (authorKey !== 'geburtstag') {
                     timeText = ev.timeStart ? ev.timeStart : '';
-                    if (ev.timeEnd) timeText += ` - ${ev.timeEnd}`;
-                    if (timeText) timeText += ' Uhr';
+                    if (ev.timeEnd) timeText += `-${ev.timeEnd}`;
+                    if (timeText) timeText += ' ';
                 }
 
                 let displayText = authorKey === 'geburtstag' ? `🎁 ${ev.title}` : ev.title;
-                dayEventsHtml += `<span class="${cssClass}" title="${displayText}">${timeText ? timeText + ' | ' : ''}${displayText}</span>`;
+                dayEventsHtml += `<span class="${cssClass}" title="${timeText}${displayText}">${timeText}${displayText}</span>`;
             });
 
             grid.innerHTML += `
                 <div class="calendar-cell ${isToday ? 'today' : ''}">
                     <div class="day-number">${day}</div>
-                    ${dayEventsHtml}
+                    <div class="events-container">${dayEventsHtml}</div>
                 </div>
             `;
         }
@@ -364,9 +377,7 @@
         const tbody = document.getElementById('eventTableBody');
         tbody.innerHTML = '';
 
-        let monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
         let daysInMonth = new Date(year, month + 1, 0).getDate();
-        
         let monthEventsList = [];
 
         for (let day = 1; day <= daysInMonth; day++) {
