@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemeinsamer Kalender — Jürgen & Silke</title>
+    <style>
+    * { box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f8fafc;
+        color: #1e293b;
+        margin: 0;
+        padding: 20px 15px;
+    }
+    .container { max-width: 950px; margin: 0 auto; }
+    
+    .header { text-align: center; margin-bottom: 25px; }
+    .header h1 {
+        color: #d97706; font-size: 28px; font-weight: 900; margin: 0;
+    }
+    .header .subtitle { color: #64748b; font-size: 14px; margin-top: 5px; font-weight: bold; }
+
+    .card {
+        background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
+        padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px;
+    }
+    .card h2 { color: #d97706; font-size: 16px; margin-top: 0; text-transform: uppercase; font-weight: 900; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1.5fr 1fr 100px 100px; gap: 10px; margin-bottom: 12px; }
+    @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
+
+    .form-group label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+    .form-control {
+        width: 100%; padding: 10px 12px; font-size: 14px;
+        background-color: #f8fafc; color: #1e293b; border: 1px solid #cbd5e1;
+        border-radius: 8px; outline: none;
+    }
+    .form-control:focus { border-color: #d97706; background-color: #fff; }
+
+    .btn {
+        background-color: #f59e0b; color: #ffffff; font-weight: 900;
+        padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer;
+        width: 100%; font-size: 14px; text-transform: uppercase; margin-top: 5px;
+        box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+    }
+    .btn:hover { background-color: #d97706; }
+
+    .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .nav-btn {
+        background: #ffffff; color: #d97706; border: 1px solid #cbd5e1;
+        padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;
+    }
+    .nav-btn:hover { background: #fef3c7; border-color: #d97706; }
+
+    .calendar-grid {
+        display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center;
+    }
+    .calendar-day-header {
+        font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; padding-bottom: 6px;
+    }
+    .calendar-cell {
+        background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;
+        min-height: 100px; padding: 6px; text-align: left; position: relative;
+        transition: border-color 0.2s;
+    }
+    .calendar-cell:hover { border-color: #cbd5e1; }
+    .calendar-cell.today { border-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.2); background-color: #fffbeb; }
+    .day-number { font-size: 12px; font-weight: bold; color: #64748b; margin-bottom: 4px; }
+    .calendar-cell.today .day-number { color: #d97706; }
+    
+    .event-badge {
+        font-size: 10px; padding: 3px 6px; border-radius: 4px; margin-bottom: 3px; 
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-weight: bold;
+    }
+    .event-badge.jürgen { background-color: #eff6ff; color: #1d4ed8; border-left: 3px solid #3b82f6; }
+    .event-badge.silke { background-color: #fdf2f8; color: #be185d; border-left: 3px solid #ec4899; }
+
+    .table-container { width: 100%; overflow-x: auto; }
+    .event-table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; font-size: 13px; }
+    .event-table th { background-color: #f1f5f9; color: #475569; padding: 10px; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; }
+    .event-table td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+    .event-table tr:hover { background-color: #f8fafc; }
+    
+    .badge-tag {
+        padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block;
+    }
+    .badge-tag.jürgen { background: #dbeafe; color: #1e40af; }
+    .badge-tag.silke { background: #fce7f3; color: #9d174d; }
+
+    .del-btn {
+        background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 14px; font-weight: bold;
+    }
+    .del-btn:hover { color: #dc2626; }
+    
+    .status-bar { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗓️ UNSER KALENDER</h1>
+            <div class="subtitle">Jürgen & Silke (Online-Sync)</div>
+        </div>
+
+        <!-- Eingabe-Karte -->
+        <div class="card">
+            <h2>Neuen Termin eintragen</h2>
+            <div class="form-row" style="margin-top: 12px;">
+                <div class="form-group">
+                    <label>Wer?</label>
+                    <select id="eventAuthor" class="form-control">
+                        <option value="Jürgen">Jürgen</option>
+                        <option value="Silke">Silke</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Beschreibung</label>
+                    <input type="text" id="eventTitle" class="form-control" placeholder="z. B. Arzttermin...">
+                </div>
+                <div class="form-group">
+                    <label>Datum</label>
+                    <input type="date" id="eventDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Von</label>
+                    <input type="time" id="eventTimeStart" class="form-control" value="10:00">
+                </div>
+                <div class="form-group">
+                    <label>Bis (opt.)</label>
+                    <input type="time" id="eventTimeEnd" class="form-control">
+                </div>
+            </div>
+            <button class="btn" onclick="addEvent()">Termin online speichern</button>
+        </div>
+
+        <!-- Kalender-Ansicht -->
+        <div class="card">
+            <div class="status-bar">
+                <span id="syncStatus">🔄 Verbinde mit JSONBin...</span>
+                <button onclick="loadFromCloud()" style="background: none; border: none; color: #d97706; cursor: pointer; font-size: 12px; font-weight: bold;">⟳ Aktualisieren</button>
+            </div>
+            <div class="calendar-nav">
+                <button class="nav-btn" onclick="changeMonth(-1)">◀ Vorheriger</button>
+                <h2 id="monthYearDisplay" style="margin: 0; color: #1e293b; font-size: 18px;"></h2>
+                <button class="nav-btn" onclick="changeMonth(1)">Nächster ▶</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid" style="margin-top: 15px;"></div>
+        </div>
+
+        <!-- Termin-Übersicht unten -->
+        <div class="card">
+            <h2>Termin-Übersicht (Aktueller Monat)</h2>
+            <div class="table-container">
+                <table class="event-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Uhrzeit</th>
+                            <th>Wer</th>
+                            <th>Termin</th>
+                            <th style="text-align: right;">Aktion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventTableBody">
+                        <!-- Wird dynamisch gefüllt -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const BIN_ID = '6a6daaffda38895dfeabbd1b';
+    const API_KEY = '$2a$10$1ynLUupN/Fka115SZVn9NurNpRBaWqrnH8qQXanu5c.cHPfriVgWS';
+
+    let currentDate = new Date();
+    let events = [];
+
+    const monthsNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+
+    async function loadFromCloud() {
+        const statusEl = document.getElementById('syncStatus');
+        statusEl.innerText = '🔄 Lade Daten...';
+
+        try {
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+
+            if (!response.ok) throw new Error('Fehler beim Laden');
+            
+            const data = await response.json();
+            events = data.record.events || [];
+            
+            statusEl.innerText = '✅ Online verbunden';
+            renderCalendar();
+        } catch (error) {
+            console.error(error);
+            statusEl.innerText = '⚠️ Offline-Modus';
+            events = JSON.parse(localStorage.getItem('juergen_silke_kalender_offline')) || [];
+            renderCalendar();
+        }
+    }
+
+    async function saveToCloud() {
+        const statusEl = document.getElementById('syncStatus');
+        statusEl.innerText = '💾 Speichere...';
+
+        localStorage.setItem('juergen_silke_kalender_offline', JSON.stringify(events));
+
+        try {
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify({ events: events })
+            });
+
+            if (!response.ok) throw new Error('Fehler beim Speichern');
+
+            statusEl.innerText = '✅ Gespeichert';
+            renderCalendar();
+        } catch (error) {
+            console.error(error);
+            statusEl.innerText = '❌ Fehler beim Speichern';
+        }
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+
+        let year = currentDate.getFullYear();
+        let month = currentDate.getMonth();
+
+        document.getElementById('monthYearDisplay').innerText = `${monthsNames[month]} ${year}`;
+
+        const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+        weekdays.forEach(day => {
+            grid.innerHTML += `<div class="calendar-day-header">${day}</div>`;
+        });
+
+        let firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
+        let totalDays = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            grid.innerHTML += `<div class="calendar-cell" style="opacity: 0; border: none;"></div>`;
+        }
+
+        let todayStr = new Date().toISOString().split('T')[0];
+
+        for (let day = 1; day <= totalDays; day++) {
+            let dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            let isToday = (dayString === todayStr);
+
+            let dayEventsHtml = '';
+            let dayEvents = events.filter(e => e.date === dayString).sort((a, b) => (a.timeStart || "").localeCompare(b.timeStart || ""));
+
+            dayEvents.forEach(ev => {
+                let cssClass = 'event-badge ' + (ev.author ? ev.author.toLowerCase() : 'jürgen');
+                let timeText = ev.timeStart ? ev.timeStart : '';
+                if (ev.timeEnd) timeText += ` - ${ev.timeEnd}`;
+                if (timeText) timeText += ' Uhr';
+                
+                dayEventsHtml += `<span class="${cssClass}" title="${ev.author} (${timeText}): ${ev.title}">${timeText ? timeText + ' | ' : ''}${ev.title}</span>`;
+            });
+
+            grid.innerHTML += `
+                <div class="calendar-cell ${isToday ? 'today' : ''}">
+                    <div class="day-number">${day}</div>
+                    ${dayEventsHtml}
+                </div>
+            `;
+        }
+
+        renderEventTable(year, month);
+    }
+
+    function renderEventTable(year, month) {
+        const tbody = document.getElementById('eventTableBody');
+        tbody.innerHTML = '';
+
+        let monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+        let monthEvents = events.filter(e => e.date && e.date.startsWith(monthPrefix));
+        
+        monthEvents.sort((a, b) => a.date.localeCompare(b.date) || (a.timeStart || "").localeCompare(b.timeStart || ""));
+
+        if (monthEvents.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">Keine Termine in diesem Monat.</td></tr>`;
+            return;
+        }
+
+        monthEvents.forEach(ev => {
+            let formattedDate = ev.date.split('-').reverse().join('.');
+            let authorName = ev.author || 'Jürgen';
+            let authorClass = authorName.toLowerCase();
+            
+            let timeStr = ev.timeStart ? `${ev.timeStart} Uhr` : '–';
+            if (ev.timeEnd) timeStr = `${ev.timeStart} – ${ev.timeEnd} Uhr`;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${formattedDate}</strong></td>
+                    <td>${timeStr}</td>
+                    <td><span class="badge-tag ${authorClass}">${authorName}</span></td>
+                    <td>${ev.title}</td>
+                    <td style="text-align: right;"><button class="del-btn" onclick="deleteEvent(${ev.id})" title="Löschen">✕</button></td>
+                </tr>
+            `;
+        });
+    }
+
+    function changeMonth(direction) {
+        currentDate.setMonth(currentDate.getMonth() + direction);
+        renderCalendar();
+    }
+
+    function addEvent() {
+        const author = document.getElementById('eventAuthor').value;
+        const title = document.getElementById('eventTitle').value.trim();
+        const date = document.getElementById('eventDate').value;
+        const timeStart = document.getElementById('eventTimeStart').value;
+        const timeEnd = document.getElementById('eventTimeEnd').value;
+
+        if (!title || !date) {
+            alert('Bitte Terminbeschreibung und Datum angeben!');
+            return;
+        }
+
+        const newId = events.length > 0 ? Math.max(...events.map(e => e.id || 0)) + 1 : 1;
+
+        events.push({ id: newId, date, timeStart, timeEnd, title, author });
+        saveToCloud();
+
+        document.getElementById('eventTitle').value = '';
+        document.getElementById('eventDate').value = '';
+        document.getElementById('eventTimeEnd').value = '';
+    }
+
+    function deleteEvent(id) {
+        if (confirm('Möchtest du diesen Termin wirklich löschen?')) {
+            events = events.filter(e => e.id !== id);
+            saveToCloud();
+        }
+    }
+
+    loadFromCloud();
+    </script>
+</body>
+</html>
